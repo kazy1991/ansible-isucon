@@ -138,15 +138,23 @@ class App < Sinatra::Base
     response.reverse!
 
     max_message_id = rows.empty? ? 0 : rows.map { |row| row['id'] }.max
-    statement = db.prepare([
-      'INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at) ',
-      'VALUES (?, ?, ?, NOW(), NOW()) ',
-      'ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()',
-    ].join)
-    statement.execute(user_id, channel_id, max_message_id, max_message_id)
+    insert_haveread(user_id, channel_id, max_message_id)
 
     content_type :json
     response.to_json
+  end
+
+  def insert_haveread(user_id, channel_id, max_message_id)
+    statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
+    unread = statement.execute(channel_id).first['cnt']
+    statement.close
+    statement = db.prepare([
+                               'INSERT INTO haveread (user_id, channel_id, message_id, unread, updated_at, created_at) ',
+                               'VALUES (?, ?, ?, ?, NOW(), NOW()) ',
+                               'ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()',
+                           ].join)
+    statement.execute(user_id, channel_id, max_message_id, unread, max_message_id)
+    statement.close
   end
 
   get '/fetch' do
