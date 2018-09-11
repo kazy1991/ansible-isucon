@@ -4,6 +4,7 @@ set -ex
 sudo systemctl restart isubata.ruby.service
 sudo cp infra/nginx.conf /etc/nginx/nginx.conf
 sudo chown root:root /etc/nginx/nginx.conf
+sudo rm /var/log/nginx/access.log
 sudo chmod 644 /etc/nginx/nginx.conf
 sudo systemctl restart nginx.service
 sudo systemctl restart mysql.service
