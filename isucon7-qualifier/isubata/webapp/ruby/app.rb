@@ -145,8 +145,8 @@ class App < Sinatra::Base
   end
 
   def insert_haveread(user_id, channel_id, max_message_id)
-    statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
-    unread = statement.execute(channel_id).first['cnt']
+    statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ? AND ? < id')
+    unread = statement.execute(channel_id, max_message_id).first['cnt']
     statement.close
     statement = db.prepare([
                                'INSERT INTO haveread (user_id, channel_id, message_id, unread, updated_at, created_at) ',
@@ -177,12 +177,12 @@ class App < Sinatra::Base
       r['channel_id'] = channel_id
       r['unread'] = if row.nil?
         statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
-        statement.execute(channel_id).first['cnt']
+        unread = statement.execute(channel_id).first['cnt']
+        statement.close
+        unread
       else
-        statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ? AND ? < id')
-        statement.execute(channel_id, row['message_id']).first['cnt']
+        row['unread']
       end
-      statement.close
       res << r
     end
 
