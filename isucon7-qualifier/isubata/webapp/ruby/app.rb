@@ -5,7 +5,7 @@ require 'sinatra/base'
 class App < Sinatra::Base
   configure do
     set :session_secret, 'tonymoris'
-    set :public_folder, File.expand_path('../../public', __FILE__)
+    set :icons_folder, "#{File.expand_path('../../public', __FILE__)}/icons"
     set :avatar_max_size, 1 * 1024 * 1024
 
     enable :sessions
@@ -40,6 +40,10 @@ class App < Sinatra::Base
     db.query("DELETE FROM message WHERE id > 10000")
     db.query("DELETE FROM haveread")
     204
+  end
+
+  def write_icon(name, data)
+    File.write("#{settings.icons_folder}/#{name}", data)
   end
 
   get '/' do
@@ -299,6 +303,7 @@ class App < Sinatra::Base
 
         avatar_name = digest + ext
         avatar_data = data
+        write_icon(avatar_name, avatar_data)
       end
     end
 
@@ -318,20 +323,6 @@ class App < Sinatra::Base
     end
 
     redirect '/', 303
-  end
-
-  get '/icons/:file_name' do
-    file_name = params[:file_name]
-    statement = db.prepare('SELECT * FROM image WHERE name = ?')
-    row = statement.execute(file_name).first
-    statement.close
-    ext = file_name.include?('.') ? File.extname(file_name) : ''
-    mime = ext2mime(ext)
-    if !row.nil? && !mime.empty?
-      content_type mime
-      return row['data']
-    end
-    404
   end
 
   private
