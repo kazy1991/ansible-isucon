@@ -5,6 +5,7 @@ require 'sinatra/base'
 class App < Sinatra::Base
   configure do
     set :session_secret, 'tonymoris'
+    # set :public_folder, File.expand_path('../../public', __FILE__)
     set :icons_folder, "#{File.expand_path('../../public', __FILE__)}/icons"
     set :avatar_max_size, 1 * 1024 * 1024
 
