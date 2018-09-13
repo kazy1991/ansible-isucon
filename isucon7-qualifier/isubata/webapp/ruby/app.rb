@@ -145,15 +145,15 @@ class App < Sinatra::Base
   end
 
   def insert_haveread(user_id, channel_id, max_message_id)
-    statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ? AND ? < id')
-    unread = statement.execute(channel_id, max_message_id).first['cnt']
+    statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
+    unread = statement.execute(channel_id).first['cnt']
     statement.close
     statement = db.prepare([
                                'INSERT INTO haveread (user_id, channel_id, message_id, unread, updated_at, created_at) ',
                                'VALUES (?, ?, ?, ?, NOW(), NOW()) ',
-                               'ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()',
+                               'ON DUPLICATE KEY UPDATE message_id = ?,unread = ?, updated_at = NOW()',
                            ].join)
-    statement.execute(user_id, channel_id, max_message_id, unread, max_message_id)
+    statement.execute(user_id, channel_id, max_message_id, unread, max_message_id, unread)
     statement.close
   end
 
@@ -170,18 +170,18 @@ class App < Sinatra::Base
 
     res = []
     channel_ids.each do |channel_id|
-      statement = db.prepare('SELECT * FROM haveread WHERE user_id = ? AND channel_id = ?')
+      statement = db.prepare('SELECT unread FROM haveread WHERE user_id = ? AND channel_id = ?')
       row = statement.execute(user_id, channel_id).first
       statement.close
       r = {}
       r['channel_id'] = channel_id
-      r['unread'] = if row.nil?
-        statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
-        unread = statement.execute(channel_id).first['cnt']
-        statement.close
-        unread
+      statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
+      count_all = statement.execute(channel_id).first['cnt']
+      statement.close
+      if row.nil?
+       r['unread'] = count_all
       else
-        row['unread']
+        r['unread'] = count_all - row['unread']
       end
       res << r
     end
@@ -358,6 +358,9 @@ class App < Sinatra::Base
   end
 
   def db_add_message(channel_id, user_id, content)
+    # statement = db.prepare('UPDATE haveread SET unread = unread + 1 where channel_id = ?')
+    # statement.execute(channel_id)
+    # statement.close
     statement = db.prepare('INSERT INTO message (channel_id, user_id, content, created_at) VALUES (?, ?, ?, NOW())')
     messages = statement.execute(channel_id, user_id, content)
     statement.close
