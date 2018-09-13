@@ -168,9 +168,9 @@ class App < Sinatra::Base
 
     rows = db.query('SELECT id FROM channel').to_a
     channel_ids = rows.map { |row| row['id'] }
-    result = db.query('SELECT channel_id, count(1) as cnt FROM message group by channel_id')
+    result = db.query('SELECT channel_id, count(1) FROM message group by channel_id')
     message_count = Hash[result.to_a.map {|item| item.values}]
-    statement = db.prepare('SELECT channel_id, unread as cnt FROM haveread where user_id = ?')
+    statement = db.prepare('SELECT channel_id, unread FROM haveread where user_id = ?')
     result = statement.execute(user_id)
     read_count = Hash[result.to_a.map {|item| item.values}]
     statement.close
