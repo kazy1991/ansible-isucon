@@ -168,21 +168,22 @@ class App < Sinatra::Base
 
     rows = db.query('SELECT id FROM channel').to_a
     channel_ids = rows.map { |row| row['id'] }
-
+    result = db.query('SELECT channel_id, count(1) as cnt FROM message group by channel_id')
+    message_count = Hash[result.to_a.map {|item| item.values}]
+    statement = db.prepare('SELECT channel_id, unread as cnt FROM haveread where user_id = ?')
+    result = statement.execute(user_id)
+    read_count = Hash[result.to_a.map {|item| item.values}]
+    statement.close
     res = []
     channel_ids.each do |channel_id|
-      statement = db.prepare('SELECT unread FROM haveread WHERE user_id = ? AND channel_id = ?')
-      row = statement.execute(user_id, channel_id).first
-      statement.close
       r = {}
       r['channel_id'] = channel_id
-      statement = db.prepare('SELECT COUNT(*) as cnt FROM message WHERE channel_id = ?')
-      count_all = statement.execute(channel_id).first['cnt']
-      statement.close
-      if row.nil?
-       r['unread'] = count_all
+      if message_count[channel_id].nil?
+        r['unread'] = 0
+      elsif read_count[channel_id].nil?
+        r['unread'] = message_count[channel_id]
       else
-        r['unread'] = count_all - row['unread']
+        r['unread'] =  message_count[channel_id] - read_count[channel_id]
       end
       res << r
     end
